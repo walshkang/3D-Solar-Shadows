@@ -123,10 +123,11 @@ export default function SearchOverlay({
       <div className="bg-black/60 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 space-y-4">
         
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+          <label htmlFor="date-picker-input" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
             <CalendarIcon size={14} className="text-amber-500" /> Date Selection
           </label>
           <input 
+            id="date-picker-input"
             type="date"
             value={format(date, 'yyyy-MM-dd')}
             onChange={(e) => {

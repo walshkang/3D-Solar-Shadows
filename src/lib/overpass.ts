@@ -204,23 +204,25 @@ export async function fetchOSMSubwayLines(bounds: [number, number, number, numbe
           const name = el.tags.name || el.tags.ref || '';
           const line = (el.tags.line || name).toLowerCase();
           
-          if (line.includes('blue') || line.includes('a') || line.includes('c') || line.includes('e') || line.includes('eighth')) {
+          const hasWord = (word: string) => new RegExp(`\\b${word}\\b`, 'i').test(line);
+          
+          if (line.includes('blue') || hasWord('a') || hasWord('c') || hasWord('e') || line.includes('eighth')) {
             color = '#0039a6'; // NYC A/C/E Blue
-          } else if (line.includes('red') || line.includes('1') || line.includes('2') || line.includes('3') || line.includes('broadway-7th')) {
+          } else if (line.includes('red') || hasWord('1') || hasWord('2') || hasWord('3') || line.includes('broadway-7th')) {
             color = '#ee352e'; // NYC 1/2/3 Red
-          } else if (line.includes('yellow') || line.includes('n') || line.includes('q') || line.includes('r') || line.includes('w') || line.includes('broadway')) {
+          } else if (line.includes('yellow') || hasWord('n') || hasWord('q') || hasWord('r') || hasWord('w') || line.includes('broadway')) {
             color = '#fccc0a'; // NYC N/Q/R/W Yellow
-          } else if (line.includes('green') || line.includes('4') || line.includes('5') || line.includes('6') || line.includes('lexington')) {
+          } else if (line.includes('green') || hasWord('4') || hasWord('5') || hasWord('6') || line.includes('lexington')) {
             color = '#00933c'; // NYC 4/5/6 Green
-          } else if (line.includes('orange') || line.includes('b') || line.includes('d') || line.includes('f') || line.includes('m') || line.includes('sixth')) {
+          } else if (line.includes('orange') || hasWord('b') || hasWord('d') || hasWord('f') || hasWord('m') || line.includes('sixth')) {
             color = '#ff6319'; // NYC B/D/F/M Orange
-          } else if (line.includes('purple') || line.includes('7') || line.includes('flushing')) {
+          } else if (line.includes('purple') || hasWord('7') || line.includes('flushing')) {
             color = '#b933ad'; // NYC 7 Purple
-          } else if (line.includes('grey') || line.includes('gray') || line.includes('l') || line.includes('14th st')) {
+          } else if (line.includes('grey') || line.includes('gray') || hasWord('l') || line.includes('14th st')) {
             color = '#a7a9ac'; // NYC L Grey
-          } else if (line.includes('lime') || line.includes('g') || line.includes('brooklyn-queens')) {
+          } else if (line.includes('lime') || hasWord('g') || line.includes('brooklyn-queens')) {
             color = '#6cbe45'; // NYC G Lime
-          } else if (line.includes('brown') || line.includes('j') || line.includes('z') || line.includes('nassau')) {
+          } else if (line.includes('brown') || hasWord('j') || hasWord('z') || line.includes('nassau')) {
             color = '#996633'; // NYC J/Z Brown
           }
           
