@@ -27,7 +27,7 @@ export default function App() {
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(false);
 
   // New map settings states
-  const [mapMode, setMapMode] = useState<'dark' | 'light' | 'natural'>('dark');
+  const mapMode = 'natural';
   const [showSubwaysMain, setShowSubwaysMain] = useState(false);
   const [showSubwaysMinimap, setShowSubwaysMinimap] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -80,6 +80,7 @@ export default function App() {
     <div className="w-screen h-screen overflow-hidden bg-black font-sans relative selection:bg-amber-500 selection:text-black">
       <MapContainer 
         date={date}
+        solarData={solarData}
         findSunActive={findSunActive}
         viewState={viewState}
         onViewStateChange={setViewState}
@@ -98,8 +99,6 @@ export default function App() {
         activeCategory={activeCategory}
         onCategoryChange={handleCategoryChange}
         isLoadingPlaces={isLoadingPlaces}
-        mapMode={mapMode}
-        onMapModeChange={setMapMode}
         showSubwaysMain={showSubwaysMain}
         onToggleSubwaysMain={() => setShowSubwaysMain(!showSubwaysMain)}
         showSubwaysMinimap={showSubwaysMinimap}

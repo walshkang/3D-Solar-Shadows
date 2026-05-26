@@ -13,8 +13,6 @@ describe('SearchOverlay component tests', () => {
     activeCategory: null,
     onCategoryChange: vi.fn(),
     isLoadingPlaces: false,
-    mapMode: 'dark' as const,
-    onMapModeChange: vi.fn(),
     showSubwaysMain: false,
     onToggleSubwaysMain: vi.fn(),
     showSubwaysMinimap: false,
@@ -34,11 +32,6 @@ describe('SearchOverlay component tests', () => {
     expect(screen.getByPlaceholderText('Search city, neighborhood...')).toBeInTheDocument();
     expect(screen.getByLabelText(/date selection/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /find sun/i })).toBeInTheDocument();
-
-    // Map style controls
-    expect(screen.getByRole('button', { name: /^dark$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^light$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^natural$/i })).toBeInTheDocument();
 
     // Category options
     expect(screen.getByRole('button', { name: /cafe/i })).toBeInTheDocument();
@@ -60,15 +53,13 @@ describe('SearchOverlay component tests', () => {
     expect(newDate.getTime()).toBe(expectedDate.getTime());
   });
 
-  it('handles find sun and theme toggle clicks', () => {
+  it('handles find sun click', () => {
     const handleToggleFindSun = vi.fn();
-    const handleMapModeChange = vi.fn();
     
     render(
       <SearchOverlay
         {...defaultProps}
         onToggleFindSun={handleToggleFindSun}
-        onMapModeChange={handleMapModeChange}
       />
     );
 
@@ -76,11 +67,6 @@ describe('SearchOverlay component tests', () => {
     const findSunBtn = screen.getByRole('button', { name: /find sun/i });
     fireEvent.click(findSunBtn);
     expect(handleToggleFindSun).toHaveBeenCalledTimes(1);
-
-    // Test theme change click
-    const lightThemeBtn = screen.getByRole('button', { name: /^light$/i });
-    fireEvent.click(lightThemeBtn);
-    expect(handleMapModeChange).toHaveBeenCalledWith('light');
   });
 
   it('handles layers toggle clicks', () => {

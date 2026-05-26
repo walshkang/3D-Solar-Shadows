@@ -21,8 +21,6 @@ interface SearchOverlayProps {
   isLoadingPlaces: boolean;
   
   // New props
-  mapMode: 'dark' | 'light' | 'natural';
-  onMapModeChange: (mode: 'dark' | 'light' | 'natural') => void;
   showSubwaysMain: boolean;
   onToggleSubwaysMain: () => void;
   showSubwaysMinimap: boolean;
@@ -42,8 +40,6 @@ export default function SearchOverlay({
   isLoadingPlaces,
   
   // New props
-  mapMode,
-  onMapModeChange,
   showSubwaysMain,
   onToggleSubwaysMain,
   showSubwaysMinimap,
@@ -159,31 +155,8 @@ export default function SearchOverlay({
       {/* Map Settings */}
       <div className="bg-black/60 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 space-y-4">
         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-          <Layers size={14} className="text-amber-500" /> Map Styles & Layers
+          <Layers size={14} className="text-amber-500" /> Map Layers
         </label>
-        
-        {/* Style Selector */}
-        <div className="space-y-1.5">
-          <span className="text-[10px] text-slate-500 uppercase font-mono">Map Theme</span>
-          <div className="grid grid-cols-3 gap-1">
-            {(['dark', 'light', 'natural'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onMapModeChange(mode);
-                }}
-                className={`py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                  mapMode === mode
-                    ? 'bg-amber-500 text-black shadow-[0_0_8px_rgba(245,158,11,0.2)]'
-                    : 'bg-white/5 text-slate-400 hover:bg-white/10 border border-white/5'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Toggles */}
         <div className="space-y-3 pt-2 border-t border-white/5">

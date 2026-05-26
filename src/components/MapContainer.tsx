@@ -7,14 +7,16 @@ import { LightingEffect, AmbientLight, _SunLight as SunLight } from '@deck.gl/co
 import type { MapViewState } from '@deck.gl/core';
 import { fetchOSMBuildings, fetchOSMSubwayLines, BuildingCollection, SubwayLineCollection } from '../lib/overpass';
 import type { Place } from '../App';
+import type { SolarData } from '../lib/solar';
 
 interface MapContainerProps {
   date: Date;
+  solarData: SolarData;
   findSunActive: boolean;
   viewState: MapViewState;
   onViewStateChange: (viewState: MapViewState) => void;
   places: Place[];
-  mapMode: 'dark' | 'light' | 'natural';
+  mapMode: 'natural';
   showSubwaysMain: boolean;
   showSubwaysMinimap: boolean;
   showMinimap: boolean;
@@ -46,11 +48,12 @@ function getBoundsFromCenter(lat: number, lng: number, radiusDegrees = 0.010): [
 
 export default function MapContainer({
   date,
+  solarData,
   findSunActive,
   viewState,
   onViewStateChange,
   places = [],
-  mapMode = 'dark',
+  mapMode = 'natural',
   showSubwaysMain,
   showSubwaysMinimap,
   showMinimap
@@ -114,57 +117,117 @@ export default function MapContainer({
     }
   }, []);
 
-  // Configure Deck.gl Lighting based on mapMode
+  // Calculate day-night transition factors based on solar elevation
+  const { sunFactor, ambientFactor, nightFactor, sunsetGlowFactor } = useMemo(() => {
+    const elevation = solarData.elevation; // in degrees
+    
+    // 1. sunFactor: Fades out completely as the sun sets (from 5 degrees to 0 degrees elevation)
+    let sf = 1;
+    if (elevation >= 5) {
+      sf = 1;
+    } else if (elevation <= 0) {
+      sf = 0;
+    } else {
+      sf = elevation / 5;
+    }
+
+    // 2. ambientFactor: Ambient light dims as night falls (from 0 degrees to -12 degrees elevation)
+    let af = 1;
+    if (elevation >= 0) {
+      af = 1;
+    } else if (elevation <= -12) {
+      af = 0.15; // floor value to keep buildings slightly visible (moonlit/dim)
+    } else {
+      af = 0.15 + 0.85 * (elevation + 12) / 12;
+    }
+
+    // 3. nightFactor: Fades in the dark ground/minimap overlay (from 0 degrees to -12 degrees elevation)
+    let nf = 0;
+    if (elevation >= 0) {
+      nf = 0;
+    } else if (elevation <= -12) {
+      nf = 1;
+    } else {
+      nf = -elevation / 12;
+    }
+
+    // 4. sunsetGlowFactor: Shines intense sunset colors (peaks right at sunset, between 0 and 5 degrees elevation)
+    let sgf = 0;
+    if (elevation > 0 && elevation < 5) {
+      // Peaks at 1.0 when elevation is 2.5 degrees, decreases to 0 at 0 and 5 degrees
+      sgf = 1 - Math.abs(elevation - 2.5) / 2.5;
+    }
+
+    return { sunFactor: sf, ambientFactor: af, nightFactor: nf, sunsetGlowFactor: sgf };
+  }, [solarData.elevation]);
+
+  // Configure Deck.gl Lighting based on mapMode and day-night status
   const effects = useMemo(() => {
-    const ambientIntensity = mapMode === 'light' ? 0.6 : (mapMode === 'natural' ? 0.5 : 0.3);
-    const sunIntensity = mapMode === 'light' ? 1.2 : (mapMode === 'natural' ? 1.6 : 2.0);
+    const baseAmbientIntensity = 0.5; // Locked to natural style intensity
+    const baseSunIntensity = 1.6;     // Locked to natural style intensity
+
+    const ambientIntensity = baseAmbientIntensity * ambientFactor;
+    const sunIntensity = baseSunIntensity * sunFactor;
+
+    // Interpolate ambient color: Shift from pure white [255, 255, 255] to cool twilight blue [110, 130, 220]
+    const ambientColor: [number, number, number] = [
+      Math.round(255 * (1 - nightFactor) + 110 * nightFactor),
+      Math.round(255 * (1 - nightFactor) + 130 * nightFactor),
+      Math.round(255 * (1 - nightFactor) + 220 * nightFactor)
+    ];
+
+    // Interpolate sunlight color: Shift from warm white [255, 255, 240] to sunset orange/gold [255, 110, 30] during sunset
+    const sunColor: [number, number, number] = [
+      255,
+      Math.round(255 * (1 - sunsetGlowFactor) + 110 * sunsetGlowFactor),
+      Math.round(240 * (1 - sunsetGlowFactor) + 30 * sunsetGlowFactor)
+    ];
 
     const ambientLight = new AmbientLight({
-      color: [255, 255, 255],
+      color: ambientColor,
       intensity: ambientIntensity
     });
     
     const dirLight = new SunLight({
       timestamp: date.getTime(),
-      color: [255, 255, 240], // Warm sunlight
+      color: sunColor,
       intensity: sunIntensity,
       _shadow: true
     });
 
     const lightingEffect = new LightingEffect({ ambientLight, dirLight });
-    lightingEffect.shadowColor = mapMode === 'light' ? [0, 0, 0, 0.4] : [0, 0, 0, 0.7];
+    
+    const shadowAlpha = 0.7; // Locked to natural style shadow opacity
+    // Fade shadows smoothly as the sun sets
+    lightingEffect.shadowColor = [0, 0, 0, shadowAlpha * sunFactor];
     
     return [lightingEffect];
-  }, [date, mapMode]);
+  }, [date, ambientFactor, sunFactor, nightFactor, sunsetGlowFactor]);
 
   // Determine ground catcher fill color dynamically
   const groundFillColor = useMemo(() => {
-    if (findSunActive) {
-      return [245, 158, 11, 120]; // Amber tint
+    // If "Find Sun" floor highlight is active and there is sun, use the amber overlay
+    if (findSunActive && sunFactor > 0) {
+      return [245, 158, 11, Math.round(120 * sunFactor)];
     }
-    switch (mapMode) {
-      case 'light':
-        return [0, 0, 0, 8]; // Faint dark catcher for light background
-      case 'natural':
-        return [255, 255, 255, 15]; // Faint white catcher for natural background
-      case 'dark':
-      default:
-        return [255, 255, 255, 25]; // Standard white catcher for dark background
-    }
-  }, [findSunActive, mapMode]);
+
+    // Faint overlay that matches the natural voyager baseline and fades out at night
+    const opacity = Math.round(15 * (1 - nightFactor));
+    return [255, 255, 255, opacity];
+  }, [findSunActive, sunFactor, nightFactor]);
 
   // Determine buildings fill color dynamically
   const buildingFillColor = useMemo(() => {
-    switch (mapMode) {
-      case 'light':
-        return [120, 130, 140, 180]; // Semi-transparent grey
-      case 'natural':
-        return [110, 125, 135, 200]; // Slate architectural tone
-      case 'dark':
-      default:
-        return [80, 90, 100, 255]; // Deep dark grey
-    }
-  }, [mapMode]);
+    return [110, 125, 135, 200]; // Slate architectural tone
+  }, []);
+
+  // Compute CSS Filter for the basemap and minimap
+  const mapFilter = useMemo(() => {
+    const brightness = 1.0 - nightFactor * 0.92; // dim to 8%
+    const saturation = 1.0 - nightFactor * 0.65; // desaturate to 35%
+    const contrast = 1.0 - nightFactor * 0.15;   // slightly lower contrast
+    return `brightness(${brightness}) saturate(${saturation}) contrast(${contrast})`;
+  }, [nightFactor]);
 
   // Check if centered within NYC area (Rough bounding box)
   const isInsideNYC = useMemo(() => {
@@ -269,12 +332,12 @@ export default function MapContainer({
       getPosition: d => [d.lng, d.lat],
       getText: d => d.name,
       getSize: 14,
-      getColor: mapMode === 'light' ? [15, 23, 42, 255] : [255, 255, 255, 255],
+      getColor: [255, 255, 255, 255],
       getPixelOffset: [0, -25],
       fontFamily: 'system-ui, sans-serif',
       fontWeight: 700,
       background: true,
-      getBackgroundColor: mapMode === 'light' ? [255, 255, 255, 220] : [0, 0, 0, 200],
+      getBackgroundColor: [0, 0, 0, 200],
       backgroundPadding: [8, 4],
     })
   ].filter(Boolean);
@@ -297,16 +360,15 @@ export default function MapContainer({
           reuseMaps 
           mapStyle={MAP_STYLES[mapMode]} 
           attributionControl={false}
+          style={{
+            filter: mapFilter
+          }}
         />
       </DeckGL>
 
       {/* Floating Minimap */}
       {showMinimap && (
-        <div className={`absolute bottom-8 left-8 w-64 h-64 rounded-3xl overflow-hidden border backdrop-blur-2xl shadow-2xl z-10 flex flex-col transition-all ${
-          mapMode === 'light' 
-            ? 'bg-white/80 border-slate-200 shadow-slate-300/40 text-slate-800' 
-            : 'bg-black/60 border-white/10 shadow-black/85 text-slate-200'
-        }`}>
+        <div className="absolute bottom-8 left-8 w-64 h-64 rounded-3xl overflow-hidden border backdrop-blur-2xl shadow-2xl z-10 flex flex-col transition-all bg-black/60 border-white/10 shadow-black/85 text-slate-200">
           {/* Minimap Header */}
           <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between text-[10px] font-bold tracking-widest uppercase opacity-80">
             <span>City Overview</span>
@@ -328,6 +390,9 @@ export default function MapContainer({
               keyboard={false}
               dragRotate={false}
               touchZoomRotate={false}
+              style={{
+                filter: mapFilter
+              }}
             >
               {/* NYC Borough Labels */}
               {isInsideNYC && NYC_BOROUGHS.map((b) => (
@@ -375,11 +440,7 @@ export default function MapContainer({
       )}
 
       {isFetching && (
-        <div className={`absolute top-4 right-4 z-10 backdrop-blur-xl px-3 py-1.5 rounded-lg text-xs font-mono animate-pulse border shadow-lg flex items-center gap-2 transition-all ${
-          mapMode === 'light'
-            ? 'bg-white/90 border-slate-200 text-slate-700'
-            : 'bg-slate-900/90 border-slate-700/50 text-slate-300'
-        }`}>
+        <div className="absolute top-4 right-4 z-10 backdrop-blur-xl px-3 py-1.5 rounded-lg text-xs font-mono animate-pulse border shadow-lg flex items-center gap-2 transition-all bg-slate-900/90 border-slate-700/50 text-slate-300">
           Generating 3D Topology...
         </div>
       )}

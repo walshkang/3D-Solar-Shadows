@@ -33,6 +33,13 @@ vi.mock('../../src/lib/overpass', () => {
 describe('MapContainer component tests', () => {
   const defaultProps = {
     date: new Date(),
+    solarData: {
+      azimuth: 180,
+      elevation: 45,
+      goldenHourInfo: null,
+      blueHourInfo: null,
+      lightDirection: [0, 0, 1] as [number, number, number]
+    },
     findSunActive: false,
     viewState: {
       longitude: -73.9855,
@@ -43,7 +50,7 @@ describe('MapContainer component tests', () => {
     },
     onViewStateChange: vi.fn(),
     places: [],
-    mapMode: 'dark' as const,
+    mapMode: 'natural' as const,
     showSubwaysMain: false,
     showSubwaysMinimap: false,
     showMinimap: true
@@ -68,7 +75,7 @@ describe('MapContainer component tests', () => {
     // Renders primary maplibre base map
     const mapLibre = screen.getByTestId('maplibre-default');
     expect(mapLibre).toBeInTheDocument();
-    expect(mapLibre).toHaveAttribute('data-style', 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json');
+    expect(mapLibre).toHaveAttribute('data-style', 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json');
 
     // Renders loading overlay or state initially
     expect(fetchOSMBuildings).toHaveBeenCalled();
